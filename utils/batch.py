@@ -30,7 +30,7 @@ def from_example_list(args, ex_list, device='cpu', train=True):
     else:
         batch.labels = None
         batch.tag_ids = None
-        batch.tag_mask = None
+        batch.tag_mask = [[1] * len(ex.input_idx) + [0] * (max_tag_lens - len(ex.input_idx)) for ex in ex_list]
 
     return batch
 
