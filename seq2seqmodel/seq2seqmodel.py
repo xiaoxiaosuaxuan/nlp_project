@@ -25,7 +25,7 @@ class AttnLayer(nn.Module):
     
     def __init__(self, input_size):
         super(AttnLayer, self).__init__()
-        self.fsize = 64
+        self.fsize = 128
         self.W_e = nn.Linear(input_size, self.fsize)
         self.W_d = nn.Linear(input_size, self.fsize, bias=False)
         self.v = nn.Linear(self.fsize, 1)
