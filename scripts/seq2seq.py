@@ -94,7 +94,6 @@ if not args.testing:
             optimizer.zero_grad()
             count += 1
             print(f"{j}/{nsamples}, {i}/{args.max_epoch}")
-        print('Training: \tEpoch: %d\tTime: %.4f\tTraining Loss: %.4f' % (i, time.time() - start_time, epoch_loss / count))
         torch.cuda.empty_cache()
         gc.collect()
 
