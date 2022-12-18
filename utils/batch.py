@@ -7,7 +7,7 @@ def from_example_list(args, ex_list, device='cpu', train=True):
     batch = Batch(ex_list, device)
     pad_idx = args.pad_idx
     tag_pad_idx = args.tag_pad_idx
-
+    batch.size = len(ex_list)
     batch.utt = [ex.utt for ex in ex_list]
     input_lens = [len(ex.input_idx) for ex in ex_list]
     max_len = max(input_lens)

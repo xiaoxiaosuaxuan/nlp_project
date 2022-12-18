@@ -76,8 +76,8 @@ class TaggingFNNDecoder(nn.Module):
         logits = self.output_layer(hiddens)    #N*L*C     (batch_size * length of sentence * classes of tags )
         logits += (1 - mask).unsqueeze(-1).repeat(1, 1, self.num_tags) * -1e32 
         
-        prob = torch.softmax(logits, dim=-1)
-        if labels is not None:
+        prob = torch.softmax(logits, dim=-1)   # prob = [batch_size * Length * num_tags]
+        if labels is not None:                                                 
             loss = self.loss_fct(logits.view(-1, logits.shape[-1]), labels.view(-1))
             return prob, loss
         return prob

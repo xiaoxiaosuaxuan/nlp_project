@@ -56,6 +56,8 @@ class LabelVocab():
         self.idx2tag[0] = PAD
         self.tag2idx['O'] = 1
         self.idx2tag[1] = 'O'
+        self.tag2idx[BOS] = 2
+        self.idx2tag[2] = BOS
         self.from_filepath(root)
 
     def from_filepath(self, root):

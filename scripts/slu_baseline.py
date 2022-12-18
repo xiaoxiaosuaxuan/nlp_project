@@ -9,8 +9,8 @@ from utils.args import init_args
 from utils.initialization import *
 from utils.example import Example
 from utils.batch import from_example_list
-from utils.vocab import PAD
-from model.slu_baseline_tagging import SLUTagging
+from utils.vocab import PAD, BOS
+from seq2seqmodel.seq2seqmodel import AttnSeq2seq
 
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
@@ -33,10 +33,11 @@ args.vocab_size = Example.word_vocab.vocab_size         #字典大小，即有�
 args.pad_idx = Example.word_vocab[PAD]                  #占位符<pad>对应的id，如果没有，则返回<unk>对应的id
 args.num_tags = Example.label_vocab.num_tags            #标签的数目（O, B-act-slot, I-act-slot)
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)    #占位符 <pad> 对应的 id
+args.tag_bos_idx = Example.label_vocab.convert_tag_to_idx(BOS)
 
 
-model = SLUTagging(args).to(device)
-Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
+model = AttnSeq2seq(args).to(device)
+Example.word2vec.load_embeddings(model.encoder.embed, Example.word_vocab, device=device)
 
 
 def set_optimizer(model, args):
@@ -92,6 +93,7 @@ if not args.testing:
             optimizer.step()
             optimizer.zero_grad()
             count += 1
+            print(f"{j}/{nsamples}, {i}/{args.max_epoch}")
         print('Training: \tEpoch: %d\tTime: %.4f\tTraining Loss: %.4f' % (i, time.time() - start_time, epoch_loss / count))
         torch.cuda.empty_cache()
         gc.collect()
