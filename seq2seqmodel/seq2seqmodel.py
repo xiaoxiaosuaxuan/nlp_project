@@ -77,9 +77,11 @@ class AttnSeq2seq(nn.Module):
         self.device = "cuda" if config.device >= 0 else "cpu"
         self.bos_id = config.tag_bos_idx
         self.loss = nn.CrossEntropyLoss(ignore_index=config.tag_pad_idx)
+        self.teaching_rate = 0.25
         
-    def forward(self, batch, training=True):
-        tag_ids = batch.tag_ids.to(self.device)        #N*L
+    def forward(self, batch, mode='train', random_teaching=True):        # mode = train / dev / test
+        if mode != 'test':
+            tag_ids = batch.tag_ids.to(self.device)        #N*L
         tag_mask = batch.tag_mask.to(self.device)       #N*L
         input_ids = batch.input_ids.to(self.device)    # N*L
         lengths = batch.lengths         # N
@@ -97,21 +99,30 @@ class AttnSeq2seq(nn.Module):
         for i in range(max_len):
             prob, h_t_c_t = self.decoder(tag_inputs, h_t_c_t, e_hiddens, tag_mask)   # prob = [batch_size * num_tags]
             probs_logits[:, i, :] = prob             
-            if (training):
+            if (mode == 'train'):
                 tag_inputs = tag_ids[:, i]                # tag_inputs = [batch_size]
+                if random_teaching:
+                    rand = torch.rand(1)[0]
+                    if rand < self.teaching_rate:
+                        tag_inputs = torch.argmax(prob, dim=-1)
             else:
                 tag_inputs = torch.argmax(prob, dim=-1)             # res = [batch_size]
         
         probs_logits += (1 - tag_mask).unsqueeze(-1).repeat(1, 1, self.config.num_tags) * -1e32   # 避免超过length的维度对softmax 产生干扰
         probs = torch.softmax(probs_logits, dim=-1)  # probs = [batch_size * Length * num_tags]  , after softmax, get the real probablity
-        loss = self.loss(probs_logits.view(-1, probs_logits.shape[-1]), tag_ids.view(-1))
         
+        if mode == 'test':        # in test mode, we can't cal the loss , since there is no label
+            return probs          
+        loss = self.loss(probs_logits.view(-1, probs_logits.shape[-1]), tag_ids.view(-1))
         return probs, loss
     
-    def decode(self, label_vocab, batch):       #label_vocab: id2tags
+    def decode(self, label_vocab, batch, mode='dev'):       #label_vocab: id2tags
         batch_size = len(batch)
         labels = batch.labels
-        prob, loss = self.forward(batch, training=False)
+        if mode == 'dev':
+            prob, loss = self.forward(batch, mode)
+        elif mode == 'test':
+            prob = self.forward(batch, mode)
         predictions = []
         for i in range(batch_size):
             pred = torch.argmax(prob[i], dim=-1).cpu().tolist()
@@ -137,7 +148,10 @@ class AttnSeq2seq(nn.Module):
                 value = ''.join([batch.utt[i][j] for j in idx_buff])
                 pred_tuple.append(f'{slot}-{value}')
             predictions.append(pred_tuple)
-        return predictions, labels, loss.cpu().item()
+        if mode == 'dev':
+            return predictions, labels, loss.cpu().item()
+        elif mode == 'test':
+            return predictions, labels
         
     
     

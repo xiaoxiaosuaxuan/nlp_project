@@ -47,5 +47,5 @@ with torch.no_grad():
     for i in range(0, len(dataset), args.batch_size):
         cur_dataset = dataset[i: i + args.batch_size]
         current_batch = from_example_list(args, cur_dataset, device, train=False)
-        pred, label, loss = model.decode(Example.label_vocab, current_batch)
+        pred, label = model.decode(Example.label_vocab, current_batch, mode='test')
         print(pred)
