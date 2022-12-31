@@ -77,9 +77,11 @@ class AttnSeq2seq(nn.Module):
         self.device = "cuda" if config.device >= 0 else "cpu"
         self.bos_id = config.tag_bos_idx
         self.loss = nn.CrossEntropyLoss(ignore_index=config.tag_pad_idx)
-        self.teaching_rate = 0.25
+    
+    def tearchRate(self, epoch):
+        return max(0.3, 1 - 1/15 * epoch)
         
-    def forward(self, batch, mode='train', random_teaching=True):        # mode = train / dev / test
+    def forward(self, batch, mode='train', random_teaching=True, epoch=None):        # mode = train / dev / test
         if mode != 'test':
             tag_ids = batch.tag_ids.to(self.device)        #N*L
         tag_mask = batch.tag_mask.to(self.device)       #N*L
@@ -103,7 +105,7 @@ class AttnSeq2seq(nn.Module):
                 tag_inputs = tag_ids[:, i]                # tag_inputs = [batch_size]
                 if random_teaching:
                     rand = torch.rand(1)[0]
-                    if rand < self.teaching_rate:
+                    if rand > self.tearchRate(epoch):
                         tag_inputs = torch.argmax(prob, dim=-1)
             else:
                 tag_inputs = torch.argmax(prob, dim=-1)             # res = [batch_size]

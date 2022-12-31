@@ -87,13 +87,12 @@ if not args.testing:
         for j in range(0, nsamples, step_size):
             cur_dataset = [train_dataset[k] for k in train_index[j: j + step_size]]
             current_batch = from_example_list(args, cur_dataset, device, train=True)
-            output, loss = model(current_batch)
+            output, loss = model(current_batch, epoch=i)
             epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             count += 1
-            print(f"{j}/{nsamples}, {i}/{args.max_epoch}")
         torch.cuda.empty_cache()
         gc.collect()
 
