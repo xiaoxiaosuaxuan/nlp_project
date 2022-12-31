@@ -2,18 +2,21 @@
 
 class Evaluator():
 
-    def acc(self, predictions, labels):
+    def acc(self, predictions, labels, sentences):
         metric_dicts = {}
-        metric_dicts['acc'] = self.accuracy(predictions, labels)
+        metric_dicts['acc'] = self.accuracy(predictions, labels, sentences)
         metric_dicts['fscore'] = self.fscore(predictions, labels)
         return metric_dicts
 
     @staticmethod
-    def accuracy(predictions, labels):
+    def accuracy(predictions, labels, sentences):
         corr, total = 0, 0
         for i, pred in enumerate(predictions):
             total += 1
             corr += set(pred) == set(labels[i])
+            if (set(pred) != set(labels[i])):
+                with open('debug.txt', 'a', encoding='utf-8') as f:
+                    f.write(f'{pred}, {labels[i]}, {sentences[i]}\n')
         return 100 * corr / total
 
     @staticmethod

@@ -163,3 +163,4 @@ models/
 /test.ipynb
 /test.py
 model*.bin
+debug.txt

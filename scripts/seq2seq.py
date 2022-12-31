@@ -52,6 +52,7 @@ def decode(choice):
     model.eval()
     dataset = train_dataset if choice == 'train' else dev_dataset
     predictions, labels = [], []
+    sentences = []
     total_loss, count = 0, 0
     with torch.no_grad():
         for i in range(0, len(dataset), args.batch_size):
@@ -63,9 +64,10 @@ def decode(choice):
                     print(current_batch.utt[j], pred[j], label[j])
             predictions.extend(pred)
             labels.extend(label)
+            sentences.extend(current_batch.utt)
             total_loss += loss
             count += 1
-        metrics = Example.evaluator.acc(predictions, labels)
+        metrics = Example.evaluator.acc(predictions, labels, sentences)
     torch.cuda.empty_cache()
     gc.collect()
     return metrics, total_loss / count
@@ -110,7 +112,7 @@ if not args.testing:
 
     print('FINAL BEST RESULT: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.4f\tDev fscore(p/r/f): (%.4f/%.4f/%.4f)' % (best_result['iter'], best_result['dev_loss'], best_result['dev_acc'], best_result['dev_f1']['precision'], best_result['dev_f1']['recall'], best_result['dev_f1']['fscore']))
 else:
-    model.load_state_dict(torch.load(open('model.bin', 'rb'))['model'])
+    model.load_state_dict(torch.load(open('model_2.bin', 'rb'))['model'])
     start_time = time.time()
     metrics, dev_loss = decode('dev')
     dev_acc, dev_fscore = metrics['acc'], metrics['fscore']

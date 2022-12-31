@@ -78,8 +78,7 @@ class AttnSeq2seq(nn.Module):
         self.bos_id = config.tag_bos_idx
         self.loss = nn.CrossEntropyLoss(ignore_index=config.tag_pad_idx)
     
-    def tearchRate(self, epoch):
-        return max(0.3, 1 - 1/15 * epoch)
+  
         
     def forward(self, batch, mode='train', random_teaching=True, epoch=None):        # mode = train / dev / test
         if mode != 'test':
@@ -105,7 +104,7 @@ class AttnSeq2seq(nn.Module):
                 tag_inputs = tag_ids[:, i]                # tag_inputs = [batch_size]
                 if random_teaching:
                     rand = torch.rand(1)[0]
-                    if rand > self.tearchRate(epoch):
+                    if rand <= 0.25:
                         tag_inputs = torch.argmax(prob, dim=-1)
             else:
                 tag_inputs = torch.argmax(prob, dim=-1)             # res = [batch_size]
