@@ -10,3 +10,5 @@
 4. teacher-forcing rate = 0.75 :    Dev acc: 71.84  Dev fscore(p/r/f): (81.60/74.45/77.86) 
    [['inform-终点名称-朝阳县农机销售有限公司导航'], ['inform-操作-取消', 'inform-对象-导航'], ['inform-操作-导航']]
    model_4.bin                      numlayer = 4 (default 2)
+
+--------------------- 以上为 seq2seqmodel, 即lstm的生成模型  ----------------------------

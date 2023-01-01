@@ -2,14 +2,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnn_utils
+import math
 
-nn.Transformer
 
 class TransformerEncoder(nn.Module):
 
     def __init__(self, config):
         super(TransformerEncoder, self).__init__()
         self.config = config
+        self.device = 'cuda'
         self.word_embed = nn.Embedding(config.vocab_size, config.embed_size, padding_idx=0)
         self.d_model = config.embed_size
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model, nhead=8, batch_first=True)
@@ -18,11 +19,11 @@ class TransformerEncoder(nn.Module):
 
     def forward(self, batch):
         batchsize = len(batch.lengths)
-        src = self.encoder_embed(batch.input_ids.to(self.device))   # src = [N, L, src_embed_size]
-        src = self.pos_encoding(src) 
-        
-        # 一开始tgt只有bos，会随着decoder输出不断扩充
+        src = self.word_embed(batch.input_ids.to(self.device))   # src = [N, L, src_embed_size]
         max_len = max(batch.lengths)
+        pos_encoding = PositionalEncoding(d_model=self.d_model, max_len=max_len)
+        src = pos_encoding(src)
+        
         padding_mask = [[False] * length + [True] * (max_len - length) for length in batch.lengths] 
         padding_mask = torch.tensor(padding_mask, device=self.device)    # padding_mask = [N, L]
         
@@ -86,3 +87,23 @@ class TaggingFNNDecoder(nn.Module):
             return prob, loss
         return prob
 
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len, dropout=0.1, device='cuda'):
+      super(PositionalEncoding, self).__init__()
+      self.dropout = nn.Dropout(p=dropout)
+      self.device = device
+      pe = torch.zeros((max_len,  d_model),
+          dtype=torch.float32).to(self.device)   #[L, d_model]
+      for pos in range(0, max_len): 
+          for i in range(0, d_model, 2):
+              div_term = math.exp(i * \
+                -math.log(10000.0) / d_model)
+              pe[pos, i] = math.sin(pos * div_term)
+              pe[pos, i+1] = math.cos(pos * div_term)
+
+      self.register_buffer('pe', pe)
+
+    def forward(self, x):        # x : [N, L, d_model]
+        x = x + self.pe[:x.shape[1], :]
+        return self.dropout(x)
