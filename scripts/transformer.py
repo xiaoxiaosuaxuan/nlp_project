@@ -58,7 +58,7 @@ def decode(choice):
         for i in range(0, len(dataset), args.batch_size):
             cur_dataset = dataset[i: i + args.batch_size]
             current_batch = from_example_list(args, cur_dataset, device, train=True)
-            pred, label, loss = model.decode(Example.label_vocab, current_batch)
+            pred, label, loss = model.decode(Example.label_vocab, current_batch, mode='dev')
             for j in range(len(current_batch)):
                 if any([l.split('-')[-1] not in current_batch.utt[j] for l in pred[j]]):
                     print(current_batch.utt[j], pred[j], label[j])
