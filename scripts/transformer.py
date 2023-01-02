@@ -9,8 +9,8 @@ from utils.args import init_args
 from utils.initialization import *
 from utils.example import Example
 from utils.batch import from_example_list
-from utils.vocab import PAD
-from seq2seqmodel.transformer_encoder import TransformerEncoder
+from utils.vocab import PAD, BOS
+from seq2seqmodel.transformer import transformer
 
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
@@ -33,10 +33,11 @@ args.vocab_size = Example.word_vocab.vocab_size         #字典大小，即有�
 args.pad_idx = Example.word_vocab[PAD]                  #占位符<pad>对应的id，如果没有，则返回<unk>对应的id
 args.num_tags = Example.label_vocab.num_tags            #标签的数目（O, B-act-slot, I-act-slot)
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)    #占位符 <pad> 对应的 id
+args.tag_bos_idx = Example.label_vocab.convert_tag_to_idx(BOS)
 
 
-model = TransformerEncoder(args).to(device)
-Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
+model = transformer(args).to(device)
+Example.word2vec.load_embeddings(model.encoder_embed, Example.word_vocab, device=device)
 
 
 def set_optimizer(model, args):
@@ -51,6 +52,7 @@ def decode(choice):
     model.eval()
     dataset = train_dataset if choice == 'train' else dev_dataset
     predictions, labels = [], []
+    sentences = []
     total_loss, count = 0, 0
     with torch.no_grad():
         for i in range(0, len(dataset), args.batch_size):
@@ -62,9 +64,10 @@ def decode(choice):
                     print(current_batch.utt[j], pred[j], label[j])
             predictions.extend(pred)
             labels.extend(label)
+            sentences.extend(current_batch.utt)
             total_loss += loss
             count += 1
-        metrics = Example.evaluator.acc(predictions, labels)
+        metrics = Example.evaluator.acc(predictions, labels, sentences)
     torch.cuda.empty_cache()
     gc.collect()
     return metrics, total_loss / count
@@ -92,8 +95,7 @@ if not args.testing:
             optimizer.step()
             optimizer.zero_grad()
             count += 1
-            print(f"{j}/{nsamples}\n")
-        print('Training: \tEpoch: %d\tTime: %.4f\tTraining Loss: %.4f' % (i, time.time() - start_time, epoch_loss / count))
+            print(f"{j}/{nsamples} in epoch{i}")
         torch.cuda.empty_cache()
         gc.collect()
 
@@ -111,7 +113,7 @@ if not args.testing:
 
     print('FINAL BEST RESULT: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.4f\tDev fscore(p/r/f): (%.4f/%.4f/%.4f)' % (best_result['iter'], best_result['dev_loss'], best_result['dev_acc'], best_result['dev_f1']['precision'], best_result['dev_f1']['recall'], best_result['dev_f1']['fscore']))
 else:
-    model.load_state_dict(torch.load(open('model.bin', 'rb'))['model'])
+    model.load_state_dict(torch.load(open('model_2.bin', 'rb'))['model'])
     start_time = time.time()
     metrics, dev_loss = decode('dev')
     dev_acc, dev_fscore = metrics['acc'], metrics['fscore']
