@@ -10,7 +10,7 @@ from utils.initialization import *
 from utils.example import Example
 from utils.batch import from_example_list
 from utils.vocab import PAD
-from model.transformer_encoder import TransformerEncoder
+from model.bert_encoder import BertEncoder
 
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
@@ -35,8 +35,7 @@ args.num_tags = Example.label_vocab.num_tags            #标签的数目（O, B-
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)    #占位符 <pad> 对应的 id
 
 
-model = TransformerEncoder(args).to(device)
-Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
+model = BertEncoder(args).to(device)
 
 
 def set_optimizer(model, args):

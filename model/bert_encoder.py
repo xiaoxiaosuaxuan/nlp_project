@@ -4,35 +4,27 @@ import torch.nn as nn
 import torch.nn.utils.rnn as rnn_utils
 import math
 
+from transformers import BertModel, BertTokenizer
 
-class TransformerEncoder(nn.Module):
+class BertEncoder(nn.Module):
 
     def __init__(self, config):
-        super(TransformerEncoder, self).__init__()
+        super(BertEncoder, self).__init__()
         self.config = config
         self.device = 'cuda'
-        self.word_embed = nn.Embedding(config.vocab_size, config.embed_size, padding_idx=0)
-        self.d_model = config.embed_size
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.d_model, nhead=8, batch_first=True)
-        self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=6)
-        self.output_layer = TaggingFNNDecoder(self.d_model, config.num_tags, config.tag_pad_idx)
+        self.fsize = 768
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-chinese')
+        self.model = BertModel.from_pretrained('bert-base-chinese')
+        self.output_layer = TaggingFNNDecoder(self.fsize, config.num_tags, config.tag_pad_idx)
 
     def forward(self, batch):
-        batchsize = len(batch.lengths)
-        src = self.word_embed(batch.input_ids.to(self.device))   # src = [N, L, src_embed_size]
-        max_len = max(batch.lengths)
-        pos_encoding = PositionalEncoding(d_model=self.d_model, max_len=max_len)
-        src = pos_encoding(src)
-        
-        padding_mask = [[False] * length + [True] * (max_len - length) for length in batch.lengths] 
-        padding_mask = torch.tensor(padding_mask, device=self.device)    # padding_mask = [N, L]
-        
-        memory = self.encoder(src, src_key_padding_mask=padding_mask)   # encoder 的输出 , [N,L,d_model]
+        inputs = self.tokenizer(batch.utt, return_tensors='pt', padding=True).to(self.device)
+        outputs = self.model(**inputs)
+        outputs = outputs[0][:, 1:-1, :]
         
         tag_ids = batch.tag_ids        #N*L
         tag_mask = batch.tag_mask       #N*L
-        
-        tag_output = self.output_layer(memory, tag_mask, tag_ids)
+        tag_output = self.output_layer(outputs, tag_mask, tag_ids)
 
         return tag_output
 
@@ -88,22 +80,3 @@ class TaggingFNNDecoder(nn.Module):
         return prob
 
 
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_len, dropout=0.1, device='cuda'):
-      super(PositionalEncoding, self).__init__()
-      self.dropout = nn.Dropout(p=dropout)
-      self.device = device
-      pe = torch.zeros((max_len,  d_model),
-          dtype=torch.float32).to(self.device)   #[L, d_model]
-      for pos in range(0, max_len): 
-          for i in range(0, d_model, 2):
-              div_term = math.exp(i * \
-                -math.log(10000.0) / d_model)
-              pe[pos, i] = math.sin(pos * div_term)
-              pe[pos, i+1] = math.cos(pos * div_term)
-
-      self.register_buffer('pe', pe)
-
-    def forward(self, x):        # x : [N, L, d_model]
-        x = x + self.pe[:x.shape[1], :]
-        return self.dropout(x)
